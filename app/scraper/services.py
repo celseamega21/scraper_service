@@ -64,3 +64,13 @@ class Scraper:
             "original_price": original_price,
             "discount_price": discount_price
         }
+    
+    def scrape_initial_product(self):
+        soup = self.get_soup()
+        
+        if not soup:
+            logger.warning("Failed to fetch product name.")
+
+        name = soup.select_one("div.css-1nylpq2").get_text(strip=True)
+        
+        return {"name": name}
