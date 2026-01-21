@@ -3,6 +3,7 @@ from app.scraper import Scraper
 from pydantic import BaseModel
 from app.utils import clean_price, notify_failed
 import httpx
+import time
 
 app = FastAPI()
 
@@ -39,4 +40,5 @@ def run_task(payload: TaskPayload):
             r.raise_for_status()
             break
         except Exception as e:
-            notify_failed(payload.task_id, f"callback_failed:{e}")
+            time.sleep(2 ** attempt)
+            continue
