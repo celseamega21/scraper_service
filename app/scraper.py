@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from bs4 import BeautifulSoup
 import httpx
 from logging import getLogger
+from exception import ScraperError
+from httpx import HTTPStatusError, RequestError
 
 logger = getLogger(__name__)
 
@@ -16,18 +18,19 @@ class Scraper:
 
     def get_soup(self, url) -> BeautifulSoup:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"}
-        
+
         try:
-            r = httpx.get(url=url, headers=headers)
+            r = httpx.get(url=url, headers=headers, timeout=10)
             r.raise_for_status()
-            return BeautifulSoup(r.text, 'html.parser')
-        except httpx.HTTPStatusError as e:
-            logger.warning(f"Bad status {e.response.status_code} for URL: {url}")
-            return None
-        except httpx.RequestError as e:
-            logger.error(f"Network error while requesting {url}: {e}")
-            return None
-        
+        except HTTPStatusError as e:
+            if e.response.status_code == 404:
+                raise ScraperError("Product page not found")
+            raise ScraperError(f"Bad status {e.response.status_code}")
+        except RequestError as e:
+            raise ScraperError("Network error") from e
+
+        return BeautifulSoup(r.text, 'html.parser')
+
     def scrape_product(self):
         results = []
         logger.info("Fetching url...")

@@ -4,18 +4,29 @@ from pydantic import BaseModel
 from app.utils import clean_price, notify_failed
 import httpx
 import time
+from httpx import TimeoutException, ConnectError, HTTPStatusError
 
 app = FastAPI()
 
-CORE_URL = "http://localhost:8000"
+CORE_URL = "http://core-api:8080"
 
 class TaskPayload(BaseModel):
     task_id: int
     product_url: str
 
-# run task scraping and send the result to core_service
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+# run task scraping and send the result to core
 @app.post("/run-task")
 def run_task(payload: TaskPayload):
+    httpx.post(
+        f"{CORE_URL}/api/tasks/{payload.task_id}/status/",
+        json={"task_status": "RUNNING"},
+        timeout=3
+    )
+
     try:
         scraped = Scraper(payload.product_url).scrape_product()
     except Exception as e:
@@ -37,8 +48,19 @@ def run_task(payload: TaskPayload):
                 },
                 timeout=5
             )
+
             r.raise_for_status()
             break
+
+            httpx.post(
+                f"{CORE_URL}/api/tasks/{payload.task_id}/status/",
+                json={"task_status": "DONE"}
+            )
+
         except Exception as e:
             time.sleep(2 ** attempt)
             continue
+            httpx.post(
+                f"{CORE_URL}/api/tasks/{payload.task_id}/status/",
+                json={"task_status": "FAILED"}
+            )
