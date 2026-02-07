@@ -40,10 +40,13 @@ class Scraper:
         if not soup:
             logger.warning("Failed to fetch data.")
             return results
+        try:
+            name = soup.select_one("div.css-1nylpq2").get_text(strip=True)
+            original_price = soup.select_one("div.original-price span:nth-of-type(2)")
+            discount_price = soup.select_one("div.price")
+        except (AttributeError, ValueError) as e:
+            raise ScraperError("HTML structure changed") from e
         
-        name = soup.select_one("div.css-1nylpq2").get_text(strip=True)
-        original_price = soup.select_one("div.original-price span:nth-of-type(2)")
-        discount_price = soup.select_one("div.price")
 
         if original_price and discount_price:
             original_price = original_price.get_text(strip=True)
