@@ -1,6 +1,6 @@
 import httpx
-import time
 from httpx import TimeoutException,ConnectError, HTTPStatusError
+import time
 
 def clean_price(price):
     """"Clean price string from non-numeric characters"""
@@ -11,7 +11,7 @@ def clean_price(price):
         return int(cleaned) if cleaned else 0
     return 0
 
-CORE_URL = "http://core-api:8000"
+CORE_URL = "http://core-api:8080"
 
 def notify_failed(task_id: int, error: str):
     payload = {
@@ -23,11 +23,18 @@ def notify_failed(task_id: int, error: str):
     for attempt in range(3): 
         try:
             r = httpx.post(
-                f"{CORE_URL}/api/scraping/callback/",
+                f"{CORE_URL}/api/v1/scraper/scraping/callback/",
                 json=payload,
                 timeout=5
             )
             r.raise_for_status()
             return
+        
         except (TimeoutException, ConnectError):
-            ti
+            time.sleep(2 ** attempt)
+
+        except HTTPStatusError as e:
+            if 500 <= e.response.status_code < 600:
+                time.sleep(2 ** attempt)
+            else:
+                return

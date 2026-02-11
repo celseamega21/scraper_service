@@ -2,8 +2,8 @@ from pydantic import BaseModel
 from bs4 import BeautifulSoup
 import httpx
 from logging import getLogger
-from exception import ScraperError
-from httpx import HTTPStatusError, RequestError
+from .exception import ScraperError
+from httpx import HTTPStatusError, RequestError, TimeoutException
 
 logger = getLogger(__name__)
 
@@ -20,33 +20,33 @@ class Scraper:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"}
 
         try:
-            r = httpx.get(url=url, headers=headers, timeout=10)
+            r = httpx.get(url=url, headers=headers, timeout=10, follow_redirects=True)
             r.raise_for_status()
+            return BeautifulSoup(r.text, 'html.parser')
+        
+        except TimeoutException:
+            raise ScraperError("SCRAPING_TIMEOUT", "Timeout from source")
+        
         except HTTPStatusError as e:
             if e.response.status_code == 404:
-                raise ScraperError("Product page not found")
-            raise ScraperError(f"Bad status {e.response.status_code}")
+                raise ScraperError("SCRAPING_NOT_FOUND", "Product page not found")
+            raise ScraperError("SCRAPING_HTTP_ERROR", f"Bad status {e.response.status_code}")
+        
         except RequestError as e:
-            raise ScraperError("Network error") from e
-
-        return BeautifulSoup(r.text, 'html.parser')
+            raise ScraperError("SCRAPING_NETWORK_ERROR", "Network error") from e
 
     def scrape_product(self):
         results = []
         logger.info("Fetching url...")
 
         soup = self.get_soup(self.url)
-
-        if not soup:
-            logger.warning("Failed to fetch data.")
-            return results
+        
         try:
             name = soup.select_one("div.css-1nylpq2").get_text(strip=True)
             original_price = soup.select_one("div.original-price span:nth-of-type(2)")
             discount_price = soup.select_one("div.price")
         except (AttributeError, ValueError) as e:
-            raise ScraperError("HTML structure changed") from e
-        
+            raise ScraperError("SCRAPING_PARSE_ERROR", "HTML changed") from e        
 
         if original_price and discount_price:
             original_price = original_price.get_text(strip=True)
@@ -61,9 +61,6 @@ class Scraper:
             original_price=original_price
         )
         results.append(product)
-
-        if not results:
-            raise Exception("No products found.")
         
         return {
             "product_name": name,
@@ -73,9 +70,6 @@ class Scraper:
     
     def scrape_initial_product(self):
         soup = self.get_soup()
-        
-        if not soup:
-            logger.warning("Failed to fetch product name.")
 
         name = soup.select_one("div.css-1nylpq2").get_text(strip=True)
         

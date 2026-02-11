@@ -24,7 +24,7 @@ def health():
 def run_task(payload: TaskPayload):
     # notify running
     httpx.post(
-        f"{CORE_URL}/api/tasks/{payload.task_id}/status/",
+        f"{CORE_URL}/api/v1/scraper/tasks/{payload.task_id}/status/",
         json={"status": "RUNNING"},
         timeout=3
     )
@@ -32,18 +32,19 @@ def run_task(payload: TaskPayload):
     # scraping
     try:
         scraped = Scraper(payload.product_url).scrape_product()
-    except ScraperError:
-        notify_failed(payload.task_id, "SCRAPING_FAILED")
-        return {"status": "failed"}
+    except ScraperError as e:
+        notify_failed(payload.task_id, e.code)
+        return {"message": "failed to scrape product"}
     
     product_name = scraped.get("product_name")
-    price = clean_price(scraped.get("discount_price"))
+    raw_price = scraped.get("discount_price")
+    price = clean_price(raw_price)
 
     # callback result
     for attempt in range(3):
         try:
             r = httpx.post(
-                f"{CORE_URL}/api/scraping/callback/",
+                f"{CORE_URL}/api/v1/scraper/callback/",
                 json={
                     "task_id": payload.task_id,
                     "product_name": product_name,
@@ -56,10 +57,10 @@ def run_task(payload: TaskPayload):
             r.raise_for_status()
 
             httpx.post(
-                f"{CORE_URL}/api/tasks/{payload.task_id}/status/",
+                f"{CORE_URL}/api/v1/scraper/tasks/{payload.task_id}/status/",
                 json={"status": "DONE"}
             )
-            return {"status": "success"}
+            return {"message": "task status update successful"}
 
         except (TimeoutException, ConnectError):
             time.sleep(2 ** attempt)
@@ -67,13 +68,13 @@ def run_task(payload: TaskPayload):
 
         except HTTPStatusError:
             httpx.post(
-                f"{CORE_URL}/api/tasks/{payload.task_id}/status/",
-                json={"task_status": "FAILED"}
+                f"{CORE_URL}/api/v1/scraper/tasks/{payload.task_id}/status/",
+                json={"status": "FAILED"}
             )
-            return {"status": "failed"}
+            return {"message": "task status update failed(1)"}
 
     httpx.post(
-        f"{CORE_URL}/api/tasks/{payload.task_id}/status/",
-        json={"task_status": "FAILED"}
+        f"{CORE_URL}/api/v1/scraper/tasks/{payload.task_id}/status/",
+        json={"status": "FAILED"}
     )
-    return {"status": "failed"}
+    return {"message": "task status update failed(2)"}
