@@ -1,32 +1,18 @@
-from fastapi import FastAPI
-from app.scraper import Scraper
-from pydantic import BaseModel
-from app.utils import clean_price, notify_failed
+from app.services.scraper import Scraper
+from app.services.utils import clean_price, notify_failed
 import httpx
 import time
-from httpx import TimeoutException, ConnectError, HTTPStatusError
-from app.exception import ScraperError
-
-app = FastAPI()
+from httpx import ConnectError, HTTPStatusError, ReadTimeout
+from app.services.exception import ScraperError
 
 CORE_URL = "http://core-api:8080"
 
-class TaskPayload(BaseModel):
-    task_id: int
-    product_url: str
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-# run task scraping and send the result to core
-@app.post("/run-task")
-def run_task(payload: TaskPayload):
+def run_task(payload):
     # notify running
     httpx.post(
         f"{CORE_URL}/api/v1/scraper/tasks/{payload.task_id}/status/",
         json={"status": "RUNNING"},
-        timeout=3
+        timeout=5
     )
 
     # scraping
@@ -62,19 +48,22 @@ def run_task(payload: TaskPayload):
             )
             return {"message": "task status update successful"}
 
-        except (TimeoutException, ConnectError):
+        except (ReadTimeout, ConnectError):
             time.sleep(2 ** attempt)
             continue
 
         except HTTPStatusError:
             httpx.post(
                 f"{CORE_URL}/api/v1/scraper/tasks/{payload.task_id}/status/",
-                json={"status": "FAILED"}
+                json={"status": "FAILED"},
+                timeout=3
             )
             return {"message": "task status update failed(1)"}
 
     httpx.post(
         f"{CORE_URL}/api/v1/scraper/tasks/{payload.task_id}/status/",
-        json={"status": "FAILED"}
+        json={"status": "FAILED"},
+        timeout=3
+
     )
     return {"message": "task status update failed(2)"}

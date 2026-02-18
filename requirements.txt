@@ -5,6 +5,7 @@ beautifulsoup4==4.14.3
 bs4==0.0.2
 certifi==2025.11.12
 click==8.3.1
+colorama==0.4.6
 dnspython==2.8.0
 email-validator==2.3.0
 fastapi==0.123.4
@@ -16,13 +17,18 @@ httpcore==1.0.9
 httptools==0.7.1
 httpx==0.28.1
 idna==3.11
+iniconfig==2.3.0
 Jinja2==3.1.6
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
+packaging==26.0
+pluggy==1.6.0
 pydantic==2.12.5
 pydantic_core==2.41.5
 Pygments==2.19.2
+pytest==9.0.2
+pytest-mock==3.15.1
 python-dotenv==1.2.1
 python-multipart==0.0.20
 PyYAML==6.0.3
