@@ -6,6 +6,7 @@ def send_success_callback(task_id, data):
         "status": "SUCCESS",
         **data
     })
+    print(f"Result scraping: {data}")
 
 def send_failed_callback(task_id, error):
     send_callback({
