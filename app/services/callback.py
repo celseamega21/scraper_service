@@ -1,4 +1,4 @@
-from app.clients.core_client import send_callback
+from clients.core_client import send_callback
 
 def send_success_callback(task_id, data):
     send_callback({

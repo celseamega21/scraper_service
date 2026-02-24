@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from app.schemas.task import TaskPayload
-from app.services.orchestrator import process_task
+from schemas.task import TaskPayload
+from services.orchestrator import process_task
 from fastapi import BackgroundTasks
 
 router = APIRouter()

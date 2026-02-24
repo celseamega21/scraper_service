@@ -1,8 +1,8 @@
-from app.services.scraper import Scraper
-from app.services.exception import ScraperError
-from app.schemas.task import TaskPayload
-from app.services.callback import send_failed_callback, send_success_callback
-from app.services.utils import clean_price
+from services.scraper import Scraper
+from services.exception import ScraperError
+from schemas.task import TaskPayload
+from services.callback import send_failed_callback, send_success_callback
+from services.utils import clean_price
 
 def process_task(payload: TaskPayload):
     try:
